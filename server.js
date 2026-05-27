@@ -125,7 +125,7 @@ function callTool(name, args) {
 }
 
 function uiResourceDescriptor() {
-  return { uri: UI_RESOURCE_URI, name: 'Analytics Visual', title: 'Interactive Analytics Visual', description: 'Minimal embedded data visualizer using actual tool-provided data only.', mimeType: UI_MIME_TYPE, _meta: { ui: { csp: { connectDomains: [SERVER_URL], resourceDomains: [SERVER_URL] }, prefersBorder: true } } };
+  return { uri: UI_RESOURCE_URI, name: 'Analytics Visual', title: 'Interactive Analytics Visual', description: 'Minimal embedded data visualizer using actual tool-provided data only.', mimeType: UI_MIME_TYPE, _meta: { ui: { domain: SERVER_URL, csp: { connectDomains: [SERVER_URL], resourceDomains: [SERVER_URL] }, prefersBorder: true } } };
 }
 function uiResourceContent() { return { uri: UI_RESOURCE_URI, mimeType: UI_MIME_TYPE, text: embeddedHtml(), _meta: uiResourceDescriptor()._meta }; }
 function embeddedHtml() {

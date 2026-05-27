@@ -41,7 +41,8 @@ const tools = [
         yField: { type: 'string', description: 'Optional metric/Y-axis field.' },
         seriesField: { type: 'string', description: 'Optional series/color field.' },
         filterField: { type: 'string', description: 'Optional filter field.' },
-        filterValue: { type: 'string', description: 'Optional filter value.' }
+        filterValue: { type: 'string', description: 'Optional filter value.' },
+        title: { type: 'string', description: 'Optional concise chart title. If omitted, Analytics Studio generates a title from the metric and dimension.' }
       }
     },
     _meta: {
@@ -92,13 +93,15 @@ function callTool(name, args) {
   const chartType = args.chartType || 'bar';
   const rows = normalizeRows(args.rows?.length ? args.rows : (args.csv ? parseCsv(args.csv) : []));
   const config = inferConfig(rows, args);
+  const title = args.title || makeTitle(topic, config, rows);
+  const visualId = stableVisualId(rows, config, title);
   const appUrl = `${SERVER_URL}/?topic=${encodeURIComponent(topic)}&chart=${encodeURIComponent(chartType)}`;
   const structuredRows = rows.length <= 200 ? rows : rows.slice(0, 200);
   if (!rows.length) {
     return {
       content: textContent('No dataset was supplied. To render the MCP visual, call analytics_studio again with actual `rows` or `csv` data. Do not call this tool with only a topic/title.'),
-      structuredContent: { topic, chartType, appUrl, rows: [], rowCount: 0, noData: true, message: 'No dataset rows or CSV were supplied to the tool call.' },
-      _meta: { noData: true, topic, chartType, rows: [], message: 'No dataset rows or CSV were supplied to the tool call.' },
+      structuredContent: { topic, title, chartType, appUrl, rows: [], rowCount: 0, noData: true, message: 'No dataset rows or CSV were supplied to the tool call.' },
+      _meta: { noData: true, topic, title, chartType, rows: [], message: 'No dataset rows or CSV were supplied to the tool call.' },
       isError: true
     };
   }
@@ -106,6 +109,8 @@ function callTool(name, args) {
     content: textContent(`Embedded Analytics Visual ready for: ${topic}\n\nDataset rows: ${rows.length}.`),
     structuredContent: {
       topic,
+      title,
+      visualId,
       chartType,
       appUrl,
       rows: structuredRows,
@@ -117,6 +122,8 @@ function callTool(name, args) {
     _meta: {
       rows,
       config,
+      title,
+      visualId,
       datasetName: args.datasetName || 'Provided dataset',
       topic,
       chartType
@@ -167,6 +174,22 @@ function inferConfig(rows, args = {}) {
     filterField: args.filterField || '(none)',
     filterValue: args.filterValue || '(all)'
   };
+}
+function makeTitle(topic, config, rows) {
+  const cleanTopic = String(topic || '').trim();
+  if (cleanTopic && !/^ad hoc analytics$/i.test(cleanTopic)) return titleCase(cleanTopic).slice(0, 80);
+  const metric = label(config.yField || 'value');
+  const dim = label(config.xField || 'category');
+  const filter = config.filterField && config.filterField !== '(none)' && config.filterValue && config.filterValue !== '(all)' ? ` for ${config.filterValue}` : '';
+  return `${metric} by ${dim}${filter}`;
+}
+function titleCase(s) { return String(s).replace(/[_-]/g,' ').replace(/\s+/g,' ').trim().replace(/\b\w/g, c => c.toUpperCase()); }
+function label(s) { return titleCase(String(s || '').replace(/[()]/g,'')); }
+function stableVisualId(rows, config, title) {
+  const seed = JSON.stringify({ title, x: config.xField, y: config.yField, rows: rows.slice(0, 25) });
+  let h = 2166136261;
+  for (let i=0;i<seed.length;i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return `visual_${(h >>> 0).toString(36)}`;
 }
 function sampleRows() {
   const regions = ['North','South','East','West'];

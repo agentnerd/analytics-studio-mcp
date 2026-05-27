@@ -3,6 +3,7 @@ const IS_EMBED = !!window.IS_MCP_EMBED;
 let rows = [], fields = [], filtered = [];
 let activeType = 'bar';
 let activeFilters = [];
+let activeVisualId = null;
 const chartTypes = [
   ['bar','Bar','<svg viewBox="0 0 24 24"><path d="M5 20V9"/><path d="M12 20V4"/><path d="M19 20v-7"/></svg>'],
   ['horizontal','Horizontal','<svg viewBox="0 0 24 24"><path d="M4 7h11"/><path d="M4 12h16"/><path d="M4 17h8"/></svg>'],
@@ -32,11 +33,11 @@ async function init(){
 function bind(){
   $('themeToggle').onclick = () => { const dark=document.body.classList.toggle('dark'); $('themeToggle').textContent = dark ? '☾' : '☼'; render(); };
   $('configToggle').onclick = () => { $('configPanel').classList.toggle('hiddenPanel'); requestAnimationFrame(()=>$('chartStage').scrollLeft=0); };
-  ['xField','yField','seriesField','filterField','filterValue','palette'].forEach(id => $(id).addEventListener('input', () => { if(id==='filterField') updateFilterValues(); render(); }));
+  ['xField','yField','seriesField','filterField','filterValue','palette'].forEach(id => $(id).addEventListener('input', () => { if(id==='filterField') updateFilterValues(); render(); updateHostContext(); }));
 }
 function buildTypeBar(){
   $('chartTypeBar').innerHTML = chartTypes.map(([type,label,icon]) => `<button class="typeButton" data-type="${type}" title="${label}" aria-label="${label}">${icon}</button>`).join('');
-  [...document.querySelectorAll('.typeButton')].forEach(btn => btn.onclick = () => { activeType = btn.dataset.type; render(); });
+  [...document.querySelectorAll('.typeButton')].forEach(btn => btn.onclick = () => { activeType = btn.dataset.type; render(); updateHostContext(); });
   setActiveType();
 }
 function setActiveType(){ [...document.querySelectorAll('.typeButton')].forEach(b => b.classList.toggle('active', b.dataset.type === activeType)); }
@@ -48,7 +49,7 @@ async function setupMcpAppSdk(){
   try{
     const { App } = await import(`${API_BASE || location.origin}/vendor/mcp-app.js`);
     const app = new App({ name:'AnalyticsVisual', version:'2.0.0' }, {}, { autoResize:true });
-    app.ontoolresult = ingestHostPayload;
+    app.ontoolresult = result => { ingestHostPayload(result); updateHostContext(); };
     app.ontoolinput = input => ingestHostPayload(input?.arguments || input);
     app.onhostcontextchanged = ctx => { if(ctx?.theme){ document.body.classList.toggle('dark', ctx.theme==='dark'); $('themeToggle').textContent = ctx.theme==='dark' ? '☾' : '☼'; render(); } };
     await app.connect(); window.analyticsMcpApp = app;
@@ -66,12 +67,14 @@ function ingestHostPayload(payload){
 function loadData(payload){
   rows = normalizeRows(payload.rows).filter(r => Object.values(r).some(isPresent));
   activeFilters = [];
+  activeVisualId = payload.visualId || null;
   fields = Object.keys(rows[0] || {});
   if(!rows.length){ showEmpty(); return; }
   hydrateControls(payload.config || payload);
   const y = $('yField').value, x = $('xField').value;
-  $('chartTitle').textContent = payload.title || payload.topic || `${label(y)} by ${label(x)}`;
+  $('chartTitle').textContent = payload.title || smartTitle(payload.topic, x, y);
   render();
+  updateHostContext();
 }
 function hydrateControls(config={}){
   const numeric = numericFields();
@@ -121,6 +124,20 @@ function render(){
   else if(activeType==='scatter') drawScatter(svg,applyActiveFilters(visibleRows()));
   else if(activeType==='heatmap') drawHeatmap(svg,data);
   else drawKpi(svg,data);
+}
+function updateHostContext(){
+  try{
+    if(!window.analyticsMcpApp?.updateModelContext || !rows.length) return;
+    window.analyticsMcpApp.updateModelContext({
+      content:[{type:'text',text:`Analytics Studio visual ${activeVisualId || ''}: ${$('chartTitle').textContent}. To revise this chart, call analytics_studio again with the same dataset and updated chart/config rather than creating a separate unrelated visual.`}],
+      structuredContent:{visualId:activeVisualId,title:$('chartTitle').textContent,chartType:activeType,xField:$('xField').value,yField:$('yField').value,filters:activeFilters,rowCount:rows.length}
+    }).catch(()=>{});
+  }catch(e){}
+}
+function smartTitle(topic,x,y){
+  const t=String(topic||'').trim();
+  if(t && !/^ad hoc analytics$/i.test(t)) return label(t).slice(0,80);
+  return `${label(y)} by ${label(x)}`;
 }
 function showEmpty(){ $('chartStage').innerHTML = `<div class="emptyState"><strong>Waiting for data</strong><span>This MCP visual renders only the dataset supplied by the tool call.</span></div>`; }
 function showNoData(message){ $('chartTitle').textContent='No data supplied'; $('filterChips').innerHTML=''; $('chartStage').innerHTML = `<div class="emptyState"><strong>No dataset received</strong><span>${message}</span></div>`; }

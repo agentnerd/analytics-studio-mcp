@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Analytics Visual</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="visualApp" aria-label="Interactive data visual">
+    <button id="themeToggle" class="themeButton" aria-label="Toggle theme" title="Toggle theme">☼</button>
+
+    <section class="visualShell">
+      <div class="titleRow">
+        <h1 id="chartTitle" contenteditable="true" spellcheck="false">Untitled visual</h1>
+      </div>
+      <div id="filterChips" class="filterChips" aria-label="Active filters"></div>
+
+      <div id="chartStage" class="chartStage">
+        <div class="emptyState">
+          <strong>Waiting for data</strong>
+          <span>This MCP visual renders only the dataset supplied by the tool call.</span>
+        </div>
+      </div>
+
+      <div class="controlDock" aria-label="Chart controls">
+        <div id="chartTypeBar" class="typeBar"></div>
+        <button id="configToggle" class="gearButton" aria-label="Configure chart" title="Configure">⚙</button>
+      </div>
+
+      <section id="configPanel" class="configPanel hiddenPanel" aria-label="Chart configuration">
+        <label>Category<select id="xField" aria-label="Category or X axis"></select></label>
+        <label>Metric<select id="yField" aria-label="Metric or Y axis"></select></label>
+        <label>Series<select id="seriesField" aria-label="Series"></select></label>
+        <label>Filter field<select id="filterField" aria-label="Filter field"></select></label>
+        <label>Filter value<select id="filterValue" aria-label="Filter value"></select></label>
+        <label>Palette<select id="palette" aria-label="Color palette"></select></label>
+      </section>
+    </section>
+
+    <div id="tooltip" class="tooltip hidden"></div>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

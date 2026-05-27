@@ -1,0 +1,39 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SERVICE_NAME: ${{ vars.SERVICE_NAME || 'analytics-studio-mcp' }}
+      REGION: ${{ secrets.GCP_REGION || 'us-central1' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Deploy
+        run: |
+          SERVER_URL="${{ vars.SERVER_URL }}"
+          if [ -z "$SERVER_URL" ]; then
+            SERVER_URL="https://${SERVICE_NAME}-${{ secrets.GCP_PROJECT_ID }}.${REGION}.run.app"
+          fi
+          gcloud run deploy "$SERVICE_NAME" \
+            --source . \
+            --region "$REGION" \
+            --allow-unauthenticated \
+            --set-env-vars "SERVER_URL=$SERVER_URL" \
+            --quiet

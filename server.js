@@ -53,8 +53,8 @@ const tools = [
   }
 ];
 
-app.get(['/healthz', '/healthz/'], (_, res) => res.json({ ok: true, service: 'analytics-mcp-app', version: '1.0.0' }));
-app.get(['/mcp', '/mcp/'], (_, res) => res.json({ ok: true, service: 'analytics-mcp-app', protocol: 'MCP JSON-RPC over POST', endpoint: '/mcp' }));
+app.get(['/healthz', '/healthz/'], (_, res) => res.json({ ok: true, service: 'analytics-studio', version: '1.0.0' }));
+app.get(['/mcp', '/mcp/'], (_, res) => res.json({ ok: true, service: 'analytics-studio', protocol: 'MCP JSON-RPC over POST', endpoint: '/mcp' }));
 app.get('/selftest', (_, res) => {
   const html = embeddedHtml();
   res.json({ ok: true, checks: { tools: tools.length, hasUiMeta: !!tools[0]._meta.ui.resourceUri, mime: UI_MIME_TYPE, htmlBytes: Buffer.byteLength(html), hasCharts: html.includes('chartTypes') && html.includes('drawBar'), actualDataOnly: true } });
@@ -69,7 +69,7 @@ app.post('/mcp', async (req, res) => {
   if (!('id' in msg)) return res.status(202).end();
   switch (msg.method) {
     case 'initialize':
-      return res.json(json(msg.id, { protocolVersion: msg.params?.protocolVersion || MCP_VERSION, capabilities: { tools: {}, resources: {} }, serverInfo: { name: 'analytics-mcp-app', title: 'Analytics MCP App', version: '1.0.0' }, instructions: 'Use analytics_studio to create embedded interactive ad hoc analytics charts.' }));
+      return res.json(json(msg.id, { protocolVersion: msg.params?.protocolVersion || MCP_VERSION, capabilities: { tools: {}, resources: {} }, serverInfo: { name: 'analytics-studio', title: 'Analytics Studio', version: '1.0.0' }, instructions: 'Use analytics_studio to create minimal embedded interactive charts from actual rows or CSV data.' }));
     case 'ping':
       return res.json(json(msg.id, {}));
     case 'tools/list':
